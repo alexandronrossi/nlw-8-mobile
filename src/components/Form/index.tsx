@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   TextInput,
@@ -7,24 +7,76 @@ import {
   TouchableOpacity
 } from 'react-native';
 import { ArrowLeft } from 'phosphor-react-native';
+import { captureScreen } from 'react-native-view-shot';
+import * as FileSystem from 'expo-file-system';
 
 import { FeedbackType } from '../../components/Widget';
-import { feedbackTypes } from '../../utils/feedbackTypes';
+import { ScreenshotButton } from '../../components/ScreenshotButton';
+import { SendFeedbackButton } from '../SendFeedbackButton';
+
+import { api } from '../../libs/api';
 
 import { styles } from './styles';
 import { theme } from '../../theme';
 
+import { feedbackTypes } from '../../utils/feedbackTypes';
+
 interface FormProps {
   feedbackType: FeedbackType;
+  onFeedbackCanceled: () => void;
+  onFeedbackSent: () => void;
 }
 
-export function Form({ feedbackType }: FormProps) {
+export function Form({ feedbackType, onFeedbackCanceled, onFeedbackSent }: FormProps) {
+  const [isSendingFeedback, setIsSendingFeedback] = useState<boolean>(false);
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [comment, setComment] = useState<string>('');
+
   const feedbackTypeInfo = feedbackTypes[feedbackType];
+
+  function handleScreenshot() {
+    captureScreen({
+      format: 'jpg',
+      quality: 0.8
+    })
+      .then(uri => setScreenshot(uri))
+      .catch(error => console.log(error));
+  }
+
+  function handleScreenshotRemove() {
+    setScreenshot(null);
+  }
+
+  async function handleSubmitFeedback() {
+    if (isSendingFeedback) {
+      return;
+    }
+
+    setIsSendingFeedback(true);
+
+    const screenshotBase64 = screenshot && await FileSystem.readAsStringAsync(screenshot, { encoding: 'base64' });
+
+    console.log(`data:image/png;base64,${screenshotBase64}`);
+
+    try {
+      await api.post('/feedbacks', {
+        type: feedbackType,
+        screenshot: `data:image/png;base64,${screenshotBase64}`,
+        comment
+      });
+
+      onFeedbackSent();
+
+    } catch (error) {
+      console.log(error);
+      setIsSendingFeedback(false);
+    }
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={onFeedbackCanceled} >
           <ArrowLeft
             size={24}
             weight="bold"
@@ -49,7 +101,22 @@ export function Form({ feedbackType }: FormProps) {
         style={styles.input}
         placeholder={feedbackTypeInfo.placeholder}
         placeholderTextColor={theme.colors.text_secondary}
+        autoCorrect={false}
+        onChangeText={setComment}
       />
+
+      <View style={styles.footer}>
+        <ScreenshotButton
+          screenshot={screenshot}
+          onTakeScreenshot={handleScreenshot}
+          onRemoveScreenshot={handleScreenshotRemove}
+        />
+
+        <SendFeedbackButton
+          isLoading={isSendingFeedback}
+          onPress={handleSubmitFeedback}
+        />
+      </View>
     </View>
   );
 }
