@@ -3,16 +3,16 @@ import { ChatTeardropDots } from 'phosphor-react-native';
 import { TouchableOpacity } from 'react-native';
 import BottomSheet from '@gorhom/bottom-sheet';
 import React, { useRef } from 'react';
-import Animated, {
-  useSharedValue,
-  withTiming,
-  useAnimatedStyle,
-  Easing,
-} from 'react-native-reanimated';
 
+import { Options } from '../Options';
+import { Form } from '../Form';
 
-import { styles } from './styles';
 import { theme } from '../../theme';
+import { styles } from './styles';
+
+import { feedbackTypes } from '../../utils/feedbackTypes';
+
+export type FeedbackType = keyof typeof feedbackTypes;
 
 function Widget() {
   // ref
@@ -41,7 +41,9 @@ function Widget() {
         backgroundStyle={styles.modal}
         handleIndicatorStyle={styles.indicator}
       >
-
+        <Form
+          feedbackType="BUG"
+        />
       </BottomSheet>
     </>
   );
